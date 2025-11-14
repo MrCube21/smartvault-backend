@@ -1,5 +1,5 @@
 # Production Dockerfile for SmartVault Backend
-FROM node:18-alpine
+FROM node:20-alpine
 
 # Set working directory
 WORKDIR /app
@@ -10,8 +10,11 @@ COPY package*.json ./
 # Install dependencies (including dev dependencies for build)
 RUN npm ci
 
-# Copy source code
-COPY . .
+# Copy TypeScript config first
+COPY tsconfig.json ./
+
+# Copy source code (including shared folder)
+COPY src/ ./src/
 
 # Build TypeScript
 RUN npm run build
