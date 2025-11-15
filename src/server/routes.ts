@@ -364,7 +364,13 @@ router.patch('/items/:id', jwtAuthMiddleware, async (req: AuthRequest, res: Resp
       updates.userNotes = userNotes || undefined;
     }
 
-    // Allow updating title, content, summary, category for note items
+    // Allow updating category for any item type
+    if (category !== undefined) {
+      // If category is null or empty string, set to empty string (not null, as DB schema requires not null)
+      updates.category = category || '';
+    }
+
+    // Allow updating title, content, summary for note items only
     if (existingItem.type === 'note') {
       if (title !== undefined) {
         updates.title = title;
@@ -374,9 +380,6 @@ router.patch('/items/:id', jwtAuthMiddleware, async (req: AuthRequest, res: Resp
       }
       if (summary !== undefined) {
         updates.summary = summary;
-      }
-      if (category !== undefined) {
-        updates.category = category;
       }
     }
 
