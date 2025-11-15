@@ -152,7 +152,13 @@ IMPORTANT:
 - If information is missing, don't make it up - only include what's in the transcript
 - For recipes, prioritize completeness and accuracy over brevity`;
 
-  const userPrompt = `Analyze this video transcript and extract ALL structured content with maximum detail:
+  // Check if transcript is from captions (cleaner) or audio transcription
+  const isFromCaptions = !transcript.includes('WEBVTT') && !transcript.includes('-->') && transcript.length > 0;
+  const transcriptSource = isFromCaptions ? 'captions/subtitles (high quality)' : 'audio transcription';
+  
+  const userPrompt = `Analyze this video transcript and extract ALL structured content with maximum detail.
+
+IMPORTANT: This transcript is from ${transcriptSource}, which means it contains the actual text content from the video. Prioritize this content over any assumptions.
 
 Transcript:
 "${transcript}"
@@ -160,12 +166,14 @@ Transcript:
 URL: ${url}
 
 INSTRUCTIONS:
-1. Carefully read the ENTIRE transcript
-2. Identify the content type (recipe, workout, tutorial, or general)
-3. For RECIPES: Extract EVERY ingredient with full quantities and units, ALL cooking steps with details (temperatures, times, techniques), and any metadata (servings, prep time, cook time)
-4. Be thorough - include all details mentioned, even if they seem minor
-5. Preserve the exact wording for measurements and instructions when possible
-6. Return complete, detailed JSON with all available information
+1. Carefully read the ENTIRE transcript - this is the primary source of information
+2. Since this is ${transcriptSource}, trust the text content as it represents what was actually said/shown
+3. Identify the content type (recipe, workout, tutorial, or general)
+4. For RECIPES: Extract EVERY ingredient with full quantities and units, ALL cooking steps with details (temperatures, times, techniques), and any metadata (servings, prep time, cook time)
+5. Be thorough - include all details mentioned, even if they seem minor
+6. Preserve the exact wording for measurements and instructions when possible
+7. The transcript text is authoritative - use it as the primary source
+8. Return complete, detailed JSON with all available information
 
 Return JSON with the appropriate structure based on the content type.`;
 
