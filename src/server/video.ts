@@ -194,9 +194,10 @@ export async function processVideo(url: string): Promise<string> {
     // Find yt-dlp executable
     const ytdlpPaths = [
       'yt-dlp', // Try system PATH first
-      '/Users/lorispassafaro/Library/Python/3.10/bin/yt-dlp', // User pip install location
-      '/usr/local/bin/yt-dlp', // Common Homebrew location
+      '/usr/bin/yt-dlp', // Alpine Linux pip install location
+      '/usr/local/bin/yt-dlp', // Common pip/Homebrew location
       '/opt/homebrew/bin/yt-dlp', // Apple Silicon Homebrew location
+      '/Users/lorispassafaro/Library/Python/3.10/bin/yt-dlp', // macOS user pip install location
     ];
     
     let ytdlpCmd = 'yt-dlp';
