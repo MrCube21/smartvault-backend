@@ -281,23 +281,26 @@ router.post('/save-video', jwtAuthMiddleware, async (req: AuthRequest, res: Resp
       return res.status(500).json({ error: 'Failed to transcribe video audio' });
     }
 
-    // Step 2: Transform transcript into structured content
+    // Step 2: Transform transcript into structured content (includes AI-generated title)
     const aiAnalysis = await transformVideoContent(transcript, url);
 
-    // Step 3: Extract metadata for title/image
-    let title = `Video from ${platform.type}`;
+    // Step 3: Use AI-generated title (prioritized) or fallback to metadata
+    let title = aiAnalysis.title || `Video from ${platform.type}`;
     let imageUrl: string | undefined;
     
     try {
       const metadata = await extractMetadata(url);
-      if (metadata.title) {
-        // Clean and summarize title: remove hashtags, emojis, and truncate
-        title = cleanVideoTitle(metadata.title);
+      // Only use metadata title if AI didn't generate a good one
+      if (!aiAnalysis.title || aiAnalysis.title === 'Video' || aiAnalysis.title.length < 5) {
+        if (metadata.title) {
+          // Clean and summarize title: remove hashtags, emojis, and truncate
+          title = cleanVideoTitle(metadata.title);
+        }
       }
       imageUrl = metadata.imageUrl || undefined;
     } catch (e) {
       // Metadata extraction is optional, continue without it
-      console.warn('Metadata extraction failed, using defaults');
+      console.warn('Metadata extraction failed, using AI-generated title');
     }
 
     // Step 4: Save to database

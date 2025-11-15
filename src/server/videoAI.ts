@@ -37,6 +37,7 @@ export interface VideoStructuredContent {
 }
 
 export interface VideoAIAnalysis {
+  title: string;
   category: string;
   summary: string;
   structuredContent: VideoStructuredContent;
@@ -69,6 +70,7 @@ Your task is to analyze the transcript and determine if it contains:
 OUTPUT FORMAT:
 You MUST return ONLY valid JSON in this exact structure:
 {
+  "title": "string (concise, descriptive title based on video content, max 60 chars, no emojis, properly formatted)",
   "type": "recipe" | "workout" | "tutorial" | "general",
   "category": "string (e.g., Cooking, Fitness, Programming, etc.)",
   "summary": "1-2 sentence summary, max 200 chars",
@@ -144,6 +146,17 @@ CRITICAL RECIPE EXTRACTION RULES:
    - Include all special instructions, tips, or warnings mentioned
    - Don't skip steps - if the transcript mentions something, include it
 
+TITLE RULES:
+- Generate a concise, descriptive title based on the video content
+- Maximum 60 characters
+- No emojis, hashtags, or special characters
+- Proper capitalization (Title Case)
+- Should clearly describe what the video is about
+- For recipes: Use the recipe name (e.g., "Chocolate Chip Cookies")
+- For workouts: Use the workout name or type (e.g., "Full Body HIIT Workout")
+- For tutorials: Use what is being taught (e.g., "How to Build a React App")
+- For general: Use a descriptive title based on main topic
+
 IMPORTANT:
 - Only include the block (recipe, workout, or tutorial) that matches the content type
 - If type is "general", omit recipe, workout, and tutorial blocks
@@ -168,12 +181,13 @@ URL: ${url}
 INSTRUCTIONS:
 1. Carefully read the ENTIRE transcript - this is the primary source of information
 2. Since this is ${transcriptSource}, trust the text content as it represents what was actually said/shown
-3. Identify the content type (recipe, workout, tutorial, or general)
-4. For RECIPES: Extract EVERY ingredient with full quantities and units, ALL cooking steps with details (temperatures, times, techniques), and any metadata (servings, prep time, cook time)
-5. Be thorough - include all details mentioned, even if they seem minor
-6. Preserve the exact wording for measurements and instructions when possible
-7. The transcript text is authoritative - use it as the primary source
-8. Return complete, detailed JSON with all available information
+3. Generate a concise, properly formatted title (max 60 chars, Title Case, no emojis) based on the video content
+4. Identify the content type (recipe, workout, tutorial, or general)
+5. For RECIPES: Extract EVERY ingredient with full quantities and units, ALL cooking steps with details (temperatures, times, techniques), and any metadata (servings, prep time, cook time)
+6. Be thorough - include all details mentioned, even if they seem minor
+7. Preserve the exact wording for measurements and instructions when possible
+8. The transcript text is authoritative - use it as the primary source
+9. Return complete, detailed JSON with all available information including the title
 
 Return JSON with the appropriate structure based on the content type.`;
 
@@ -259,14 +273,45 @@ Return JSON with the appropriate structure based on the content type.`;
         ...(result.tutorial && { tutorial: result.tutorial }),
       };
 
+      // Generate title from content
+      let title = result.title || '';
+      if (!title || title.trim().length === 0) {
+        // Fallback: generate title from structured content
+        if (recipeData?.name) {
+          title = recipeData.name;
+        } else if (result.workout?.name) {
+          title = result.workout.name;
+        } else if (result.tutorial?.title) {
+          title = result.tutorial.title;
+        } else {
+          // Generate from summary or transcript
+          const fallbackTitle = result.summary || transcript.substring(0, 50);
+          title = fallbackTitle.split('.')[0].trim();
+        }
+      }
+      
+      // Clean and format title
+      title = title.trim()
+        .replace(/[#@]/g, '') // Remove hashtags and mentions
+        .replace(/\s+/g, ' ') // Normalize whitespace
+        .substring(0, 60); // Max 60 chars
+      
+      // Ensure proper capitalization (Title Case)
+      title = title.split(' ').map((word: string) => {
+        if (word.length === 0) return word;
+        return word[0].toUpperCase() + word.slice(1).toLowerCase();
+      }).join(' ');
+
       const category = result.category || 'General';
       const summary = result.summary || transcript.substring(0, 200);
 
+      console.log(`   ✅ Title: ${title}`);
       console.log(`   ✅ Content type: ${structuredContent.type}`);
       console.log(`   ✅ Category: ${category}`);
       console.log(`   ✅ Summary: ${summary.substring(0, 50)}...`);
 
       return {
+        title: title || 'Video',
         category,
         summary: summary.length > 200 ? summary.substring(0, 197) + '...' : summary,
         structuredContent,
@@ -286,7 +331,9 @@ Return JSON with the appropriate structure based on the content type.`;
 
   // Fallback if all models fail
   console.error('❌ All AI models failed, using fallback');
+  const fallbackTitle = transcript.substring(0, 50).split('.')[0].trim() || 'Video';
   return {
+    title: fallbackTitle.substring(0, 60),
     category: 'General',
     summary: transcript.substring(0, 200),
     structuredContent: {
